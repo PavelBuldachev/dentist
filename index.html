@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tree View</title>
+<style>
+  .tree-view {
+    margin-left: 20px;
+  }
+  .tree-view ul {
+    list-style-type: none;
+  }
+  .tree-view li {
+    margin-bottom: 5px;
+    cursor: pointer;
+  }
+  .tree-view li::before {
+    content: "▶";
+    margin-right: 5px;
+  }
+  .tree-view .leaf::before,
+  .tree-view .collapsed::before {
+    content: "▶";
+    margin-right: 5px;
+  }
+  .tree-view .expanded::before {
+    content: "▼";
+    margin-right: 5px;
+  }
+  .tree-view .hidden {
+    display: none;
+  }
+  .tree-view .leaf::before {
+    content: "";
+    margin-right: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div id="tree-container" class="tree-view"></div>
+
+<script>
+// Функция для создания узла дерева
+function createTreeNode(service) {
+    const li = document.createElement('li');
+    // Указывать цену, только если она не равна нулю
+    if (service.price !== 0) {
+        li.textContent = `${service.name} (${service.price})`;
+    } else {
+        li.textContent = service.name;
+    }
+    if (service.node === 0) {
+        li.classList.add('leaf');
+    } else {
+        li.classList.add('collapsed');
+
+        li.onclick = function(event) {
+        // Проверить, открыт ли корневой узел
+        const rootNode = this.closest('ul');
+        const isRootNodeOpen = !rootNode.classList.contains('hidden');
+
+        // Переключение видимости ближайших детей
+        this.classList.toggle('expanded');
+        this.classList.toggle('collapsed');
+        this.querySelector('ul').classList.toggle('hidden');
+
+            // Сохранить все предки открытыми, но не добавляйте свернутый класс в первый li
+            let parent = this.parentElement;
+            while (parent && parent.tagName === 'LI') {
+                parent.classList.add('expanded');
+                parent.querySelector('ul').classList.remove('hidden');
+                parent = parent.parentElement;
+            }
+
+            // Если корневой узел открыт, предотвратить его закрытие
+            if (isRootNodeOpen) {
+                event.stopPropagation();
+            }
+        };
+    }
+    return li;
+}
+
+// Функция для построения дерева
+function buildTree(services, headId = null) {
+    // Сортировка массива
+    services.sort((a, b) => a.sorthead - b.sorthead);
+
+    const ul = document.createElement('ul');
+    services
+        .filter(service => service.head === headId)
+        .forEach(service => {
+        const li = createTreeNode(service);
+        const children = buildTree(services, service.id);
+        if (children.childElementCount > 0) {
+            children.classList.add('hidden'); // Добавьте класс "hidden" к детям по умолчанию
+            li.appendChild(children);
+        }
+        ul.appendChild(li);
+        });
+    return ul;
+    }
+
+// Получение данных из "data.json"
+fetch('data.json')
+    .then(response => response.json())
+    .then(data => {
+        const tree = buildTree(data.services);
+        const treeContainer = document.getElementById('tree-container');
+        treeContainer.appendChild(tree);
+    })
+    .catch(error => {
+        console.error('Error fetching data:', error);
+    });
+</script>
+
+</body>
+</html>
